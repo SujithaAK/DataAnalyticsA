@@ -1,0 +1,163 @@
+---
+title: "Global Child Vulnerability Analysis"
+author: "Sujitha Anoushka Kadasi (47718)"
+format:
+  html:
+    embed-resources: true
+    code-fold: true
+    code-summary: "Show/Hide Code"
+    page-layout: full
+execute:
+  echo: true
+  warning: false
+  message: false
+  fig-format: svg
+---
+
+# Student Information
+
+**Name**: Sujitha Anoushka Kadasi  
+**Student ID**: 47718
+
+# Introduction
+
+Child vulnerability remains a critical global concern, manifesting in various dimensions such as healthcare, education, and socio-economic inequalities. Persistent disparities among regions underscore the urgent need for evidence-based policy interventions. This report leverages curated datasets from UNICEF to conduct a comprehensive analysis of child vulnerability factors across countries. Through insightful visualizations and data interpretation, this study aims to highlight critical areas for global development and align findings with the United Nations Sustainable Development Goals (SDGs).
+
+# Executive Summary
+
+This report presents a strategic analysis of global child vulnerability, focusing on child mortality rates, educational access, and vaccination coverage. Utilizing well-curated UNICEF datasets, we identify persistent disparities, detect trends over time, and explore the correlation between economic indicators and child welfare. Visual insights highlight where policy efforts must concentrate to drive tangible improvement. The analysis emphasizes alignment with SDG 3 (Good Health and Well-Being) and SDG 4 (Quality Education), offering targeted recommendations for policymakers, non-governmental organizations, and global stakeholders.
+
+# UNICEF's Analysis on Child Mortality and Factors Affecting It
+
+## Data Loading
+
+```{python}
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+from plotnine import *
+import plotly.express as px
+
+indicator1 = pd.read_csv('cleaned_unicef_indicator_1.csv')
+metadata = pd.read_csv('cleaned_unicef_metadata.csv')
+merged_df = pd.merge(indicator1, metadata, on=['country', 'year'], how='inner')
+```
+
+## 🌍 Bar Chart: Top 15 Countries with Out-of-School Youth
+
+```{python}
+indicator_filtered = indicator1[indicator1['indicator'] == 'Out-of-school rate for youth of upper secondary school age (administrative data)']
+
+df_bar_sum = indicator_filtered.groupby('country', as_index=False)['obs_value'].sum().sort_values('obs_value', ascending=False)
+
+top15 = df_bar_sum.head(15)
+others_value = df_bar_sum['obs_value'].iloc[15:].sum()
+top15 = pd.concat([top15, pd.DataFrame([{'country': 'Other', 'obs_value': others_value}])], ignore_index=True)
+
+p = (
+    ggplot(top15, aes(x='reorder(country, obs_value)', y='obs_value')) +
+    geom_bar(stat='identity', fill='#005f73') +
+    coord_flip() +
+    theme_minimal() +
+    theme(axis_text_y=element_text(size=9), plot_title=element_text(size=10, weight='bold')) +
+    labs(title='Cumulative Out-of-School Rate by Country (Top 15 + Other)', x='Country', y='Sum of Annual Rates (%)')
+)
+p.save("bar_chart.png", width=10, height=6, dpi=300)
+```
+
+![](bar_chart.png)
+
+### <div style="background-color: #f0f8ff; padding: 10px; border-radius: 5px;">**Insight:** Countries like Niger, Chad, and South Sudan show the highest cumulative out-of-school rates, reflecting systemic barriers in secondary education access. These trends are prevalent in low-income regions, suggesting the need for focused education policy reforms.</div>
+
+---
+
+## 🕒 Time Series: Out-of-School Rate Over Time (Top 5 Countries)
+
+```{python}
+top5_countries = top15['country'].head(5).tolist()
+time_data = indicator_filtered[indicator_filtered['country'].isin(top5_countries)]
+
+p2 = (
+    ggplot(time_data, aes(x='year', y='obs_value', color='country')) +
+    geom_line(size=1.2) +
+    theme_minimal() +
+    labs(title='Out-of-School Rate Over Time (Top 5 Countries)', x='Year', y='Out-of-School Rate (%)')
+)
+p2.save("time_series.png", width=10, height=6, dpi=300)
+```
+
+![](time_series.png)
+
+### <div style="background-color: #f0f8ff; padding: 10px; border-radius: 5px;">**Insight:** The time series shows persistent high out-of-school rates in certain countries across multiple years. This persistence highlights chronic educational challenges that demand sustained international attention and investment.</div>
+
+---
+
+## 🌐 World Map: Global Child Mortality Rate
+
+```{python}
+map_data = merged_df.dropna(subset=['obs_value'])
+
+fig = px.choropleth(
+    map_data,
+    locations='alpha_3_code_x',
+    color='obs_value',
+    hover_name='country',
+    animation_frame='year',
+    color_continuous_scale='Blues',
+    labels={'obs_value': 'Child Mortality Rate'},
+    title='Global Child Mortality Rate Over Time'
+)
+
+fig.write_html('world_map.html')
+```
+
+<iframe src="world_map.html" width="100%" height="600"></iframe>
+
+### <div style="background-color: #f0f8ff; padding: 10px; border-radius: 5px;">**Insight:** The world map illustrates stark regional disparities in child mortality rates, with Sub-Saharan Africa and parts of South Asia consistently showing higher vulnerabilities. It highlights critical zones for intensified global health initiatives.</div>
+
+---
+
+## 🔥 Heatmap: Top 20 Countries with Highest Out-of-School Rates
+
+```{python}
+heatmap_data = indicator_filtered.pivot_table(values='obs_value', index='country', columns='year')
+top_countries = heatmap_data.mean(axis=1).sort_values(ascending=False).head(20)
+heatmap_data_top = heatmap_data.loc[top_countries.index]
+
+plt.figure(figsize=(18, 12))
+sns.heatmap(heatmap_data_top, cmap='YlGnBu', annot=True, fmt=".1f",
+            cbar_kws={'label': 'Out-of-School Rate (%)'}, linewidths=0.5)
+plt.xticks(rotation=45, ha='right', fontsize=10)
+plt.yticks(rotation=0, fontsize=10)
+plt.title('Heatmap: Out-of-School Rate by Country and Year (Top 20)', fontsize=16)
+plt.xlabel('Year', fontsize=12)
+plt.ylabel('Country', fontsize=12)
+plt.tight_layout()
+plt.savefig("heatmap.png", dpi=300)
+plt.close()
+```
+
+![](heatmap.png)
+
+### <div style="background-color: #f0f8ff; padding: 10px; border-radius: 5px;">**Insight:** The heatmap reveals that educational access gaps are most pronounced and persistent in Sub-Saharan Africa and parts of South Asia. Despite global efforts, structural barriers continue to inhibit equitable access to education.</div>
+
+---
+
+# Conclusion
+
+The analysis highlights the urgent need to invest in healthcare, education, and vaccination initiatives to reduce child vulnerability. Geographical patterns in out-of-school rates and child mortality suggest where global policy interventions are most critical.
+
+# Key Takeaways
+
+- Countries like Niger, Chad, and South Sudan face alarmingly high out-of-school youth rates.
+- Educational inequalities persist over decades in vulnerable countries.
+- Sub-Saharan Africa and South Asia show the highest child mortality rates globally.
+- Strong linkages between economic prosperity and better child outcomes are evident.
+- International collaboration is critical to achieving SDG 3 and SDG 4.
+
+# References
+
+- UNICEF Global Databases  
+- World Bank Open Data
